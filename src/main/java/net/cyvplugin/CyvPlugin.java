@@ -1,5 +1,6 @@
 package net.cyvplugin;
 
+import net.cyvplugin.bridge.CyvThemeBridge;
 import net.cyvplugin.command.CommandCyvPlugin;
 import net.cyvplugin.event.MacroKeybindHandler;
 import net.cyvplugin.event.MacroMenuKeyHandler;
@@ -43,6 +44,7 @@ public class CyvPlugin {
     }
 
     public static void sendChatMessage(String text) {
-        Minecraft.getMinecraft().ingameGUI.getChatGUI().printChatMessage(new ChatComponentText("\u00a7a<CyvPlugin> \u00a7f" + text));
+        Minecraft.getMinecraft().ingameGUI.getChatGUI().printChatMessage(new ChatComponentText(
+                CyvThemeBridge.chatColor1() + "<CyvPlugin> \u00a7f" + text));
     }
 }
