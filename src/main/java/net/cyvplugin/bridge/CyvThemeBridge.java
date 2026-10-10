@@ -7,9 +7,11 @@ import java.lang.reflect.Method;
 
 public final class CyvThemeBridge {
     private static Field themeField;
+    private static Field color1Field;
     private static Method drawRoundedRect;
     private static Method drawCenteredString;
     private static Method drawString;
+    private static Method chatFormatting;
     private static boolean resolved = false;
 
     private CyvThemeBridge() {}
@@ -20,6 +22,7 @@ public final class CyvThemeBridge {
         try {
             Class<?> cyvForge = findClass("net.cyvforge.CyvForge");
             themeField = cyvForge.getField("theme");
+            color1Field = findClass("net.cyvforge.config.CyvClientColorHelper").getField("color1");
             Class<?> guiUtils = findClass("net.cyvforge.util.GuiUtils");
             drawRoundedRect = guiUtils.getMethod("drawRoundedRect", int.class, int.class, int.class, int.class, float.class, int.class);
             drawCenteredString = guiUtils.getMethod("drawCenteredString", String.class, int.class, int.class);
@@ -36,6 +39,19 @@ public final class CyvThemeBridge {
             return theme.getClass().getField(fieldName).getInt(theme);
         } catch (Exception e) {
             throw new IllegalStateException("CyvForge theme field unavailable: " + fieldName, e);
+        }
+    }
+
+    public static String chatColor1() {
+        resolve();
+        try {
+            Object color = color1Field.get(null);
+            if (chatFormatting == null) {
+                chatFormatting = color.getClass().getMethod("getChatFormatting");
+            }
+            return (String) chatFormatting.invoke(color);
+        } catch (Exception e) {
+            throw new IllegalStateException("CyvForge color1 unavailable", e);
         }
     }
 
