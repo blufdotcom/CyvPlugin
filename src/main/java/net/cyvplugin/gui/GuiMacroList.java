@@ -191,9 +191,13 @@ public class GuiMacroList extends GuiScreen {
                 if (rowY + ROW_CARD_HEIGHT < listY1() || rowY > listY2()) continue;
                 boolean favorite = favorites.contains(name);
                 boolean hovered = i == hoveredIndex;
+                boolean hasBind = KeybindStore.get(name) >= 0;
                 CyvThemeBridge.drawRoundedRect(listX1(), rowY, listX2(), rowY + ROW_CARD_HEIGHT, 3, rowColor(favorite, hovered));
 
-                int textRight = hovered ? playButtonX1(name) - 4 : listX2() - 6;
+                int textRight;
+                if (hovered) textRight = playButtonX1(name) - 4;
+                else if (hasBind) textRight = keyButtonX1(name) - 4;
+                else textRight = listX2() - 6;
                 String display = name.equals(capturingMacro) ? "Press a key..." : name;
                 String label = fontRendererObj.trimStringToWidth(display, Math.max(0, textRight - textX()));
                 CyvThemeBridge.drawString(label, textX(),
@@ -203,6 +207,8 @@ public class GuiMacroList extends GuiScreen {
                 if (hovered) {
                     drawRowButton(playButtonX1(name), playButtonWidth(), buttonY(rowY), PLAY_LABEL,
                             inPlayButton(mouseX, mouseY, name, rowY));
+                }
+                if (hovered || hasBind) {
                     drawRowButton(keyButtonX1(name), keyButtonWidth(name), buttonY(rowY), keyLabel(name),
                             inKeyButton(mouseX, mouseY, name, rowY));
                 }
@@ -270,7 +276,9 @@ public class GuiMacroList extends GuiScreen {
     @Override
     protected void keyTyped(char typedChar, int keyCode) throws IOException {
         if (capturingMacro != null) {
-            if (keyCode != Keyboard.KEY_ESCAPE) {
+            if (keyCode == Keyboard.KEY_ESCAPE || keyCode == Keyboard.KEY_DELETE || keyCode == Keyboard.KEY_SPACE) {
+                KeybindStore.remove(capturingMacro);
+            } else {
                 KeybindStore.set(capturingMacro, keyCode);
             }
             capturingMacro = null;
