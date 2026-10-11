@@ -1,0 +1,13 @@
+[
+{
+  "modid": "cyvplugin",
+  "name": "CyvPlugin",
+  "description": "A Minecraft 1.8.9 Forge mod.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "authorList": ["vsms"],
+  "logoFile": "icon.png",
+  "screenshots": [],
+  "dependencies": []
+}
+]
