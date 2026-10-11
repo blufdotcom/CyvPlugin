@@ -29,12 +29,16 @@ public class UpdateNotificationHandler {
         } else if (UpdateState.STATUS_UP_TO_DATE.equals(UpdateState.status)) {
             drawMessage(mc, "CyvPlugin up to date", 0xAAAAAA);
         }
+        drawMessage(mc, "CyvPlugin by vsms | github.com/blufdotcom/CyvPlugin", 0xAAAAAA, 18);
     }
 
     private void drawMessage(Minecraft mc, String message, int color) {
+        drawMessage(mc, message, color, 6);
+    }
+
+    private void drawMessage(Minecraft mc, String message, int color, int y) {
         int width = mc.fontRendererObj.getStringWidth(message);
         int x = (mc.currentScreen.width - width) / 2;
-        int y = 6;
         Gui.drawRect(x - 4, y - 3, x + width + 4, y + 10, 0x90000000);
         mc.fontRendererObj.drawStringWithShadow(message, x, y, color);
     }
