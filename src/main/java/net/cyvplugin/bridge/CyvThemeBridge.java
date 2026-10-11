@@ -8,10 +8,12 @@ import java.lang.reflect.Method;
 public final class CyvThemeBridge {
     private static Field themeField;
     private static Field color1Field;
+    private static Field color2Field;
     private static Method drawRoundedRect;
     private static Method drawCenteredString;
     private static Method drawString;
     private static Method chatFormatting;
+    private static Method drawColor;
     private static boolean resolved = false;
 
     private CyvThemeBridge() {}
@@ -22,7 +24,9 @@ public final class CyvThemeBridge {
         try {
             Class<?> cyvForge = findClass("net.cyvforge.CyvForge");
             themeField = cyvForge.getField("theme");
-            color1Field = findClass("net.cyvforge.config.CyvClientColorHelper").getField("color1");
+            Class<?> colorHelper = findClass("net.cyvforge.config.CyvClientColorHelper");
+            color1Field = colorHelper.getField("color1");
+            color2Field = colorHelper.getField("color2");
             Class<?> guiUtils = findClass("net.cyvforge.util.GuiUtils");
             drawRoundedRect = guiUtils.getMethod("drawRoundedRect", int.class, int.class, int.class, int.class, float.class, int.class);
             drawCenteredString = guiUtils.getMethod("drawCenteredString", String.class, int.class, int.class);
@@ -52,6 +56,20 @@ public final class CyvThemeBridge {
             return (String) chatFormatting.invoke(color);
         } catch (Exception e) {
             throw new IllegalStateException("CyvForge color1 unavailable", e);
+        }
+    }
+
+    public static int getDrawColor(String which) {
+        resolve();
+        Field field = "color1".equals(which) ? color1Field : color2Field;
+        try {
+            Object color = field.get(null);
+            if (drawColor == null) {
+                drawColor = color.getClass().getMethod("getDrawColor");
+            }
+            return ((Long) drawColor.invoke(color)).intValue();
+        } catch (Exception e) {
+            throw new IllegalStateException("CyvForge draw color unavailable: " + which, e);
         }
     }
 
