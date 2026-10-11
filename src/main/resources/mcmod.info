@@ -2,10 +2,13 @@
 {
   "modid": "cyvplugin",
   "name": "CyvPlugin",
-  "description": "A Minecraft 1.8.9 Forge mod.",
+  "description": "A Minecraft 1.8.9 Forge mod by blufdot. All rights reserved: do not redistribute or reuse without credit.",
   "version": "${version}",
   "mcversion": "${mcversion}",
+  "url": "https://github.com/blufdotcom/CyvPlugin",
+  "updateUrl": "https://github.com/blufdotcom/CyvPlugin/releases",
   "authorList": ["blufdot"],
+  "credits": "Created by blufdot - https://github.com/blufdotcom/CyvPlugin",
   "logoFile": "icon.png",
   "screenshots": [],
   "dependencies": []
