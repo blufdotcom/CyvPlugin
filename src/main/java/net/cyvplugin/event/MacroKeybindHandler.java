@@ -22,13 +22,45 @@ public class MacroKeybindHandler {
         for (Map.Entry<String, Integer> entry : KeybindStore.all().entrySet()) {
             Integer bound = entry.getValue();
             if (bound == null || bound != key) continue;
+            if (cancelMacroIfRunning()) return;
             try {
                 CyvForgeBridge.runMacro(entry.getKey());
             } catch (Exception e) {
                 LogManager.getLogger().error("CyvPlugin: failed to run macro '" + entry.getKey() + "'", e);
                 CyvPlugin.sendChatMessage("Could not run macro '" + entry.getKey() + "': " + e.getMessage());
             }
-            break;
+            return;
         }
+
+        int runMacroKey;
+        try {
+            runMacroKey = CyvForgeBridge.getRunMacroKeyCode();
+        } catch (Exception ignored) {
+            return;
+        }
+        if (runMacroKey <= 0 || runMacroKey != key) return;
+        try {
+            CyvForgeBridge.consumeRunMacroKey();
+        } catch (Exception ignored) {
+        }
+        if (cancelMacroIfRunning()) return;
+        try {
+            CyvForgeBridge.runCurrentMacro();
+        } catch (Exception e) {
+            LogManager.getLogger().error("CyvPlugin: failed to run macro via CyvForge key", e);
+            CyvPlugin.sendChatMessage("Could not run macro: " + e.getMessage());
+        }
+    }
+
+    private boolean cancelMacroIfRunning() {
+        try {
+            if (CyvForgeBridge.isMacroRunning()) {
+                CyvForgeBridge.stopMacro();
+                return true;
+            }
+        } catch (Exception e) {
+            LogManager.getLogger().error("CyvPlugin: failed to stop macro", e);
+        }
+        return false;
     }
 }

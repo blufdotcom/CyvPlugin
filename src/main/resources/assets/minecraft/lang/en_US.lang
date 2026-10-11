@@ -1,2 +1,8 @@
 key.cyvplugin.category=CyvPlugin Keys
 key.cyvplugin.macromenu.desc=Open Macro List
+key.cyvplugin.guimacro.desc=Open Macro GUI
+key.cyvplugin.practice.desc=Toggle Practice Mode
+key.cyvplugin.savecheckpoint.desc=Save Checkpoint
+key.cyvplugin.tpcheckpoint.desc=Teleport to Checkpoint
+key.cyvplugin.teleportthroughblock.desc=Teleport Through Block
+key.cyvplugin.teleporttotopblock.desc=Teleport to Top of Block

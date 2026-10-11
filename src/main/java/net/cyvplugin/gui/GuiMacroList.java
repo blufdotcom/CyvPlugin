@@ -5,6 +5,7 @@ import net.cyvplugin.bridge.CyvForgeBridge;
 import net.cyvplugin.bridge.CyvThemeBridge;
 import net.cyvplugin.macro.FavoritesStore;
 import net.cyvplugin.macro.KeybindStore;
+import net.cyvplugin.macro.MacroMirror;
 import net.cyvplugin.macro.MacroStore;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
@@ -33,6 +34,7 @@ public class GuiMacroList extends GuiScreen {
     private static final int BUTTON_GAP = 4;
     private static final int BUTTON_RIGHT_INSET = 5;
     private static final String PLAY_LABEL = "Run";
+    private static final String MIRROR_LABEL = "Mirror";
     private static final int BUTTON_BG = 0xB0202020;
     private static final int BUTTON_BG_HOVER = 0xB03A3A3A;
     private static final int ROW_NORMAL = 0x90383838;
@@ -140,7 +142,11 @@ public class GuiMacroList extends GuiScreen {
 
     private int keyButtonX1(String name) { return listX2() - BUTTON_RIGHT_INSET - keyButtonWidth(name); }
 
-    private int playButtonX1(String name) { return keyButtonX1(name) - BUTTON_GAP - playButtonWidth(); }
+    private int mirrorButtonWidth() { return fontRendererObj.getStringWidth(MIRROR_LABEL) + 8; }
+
+    private int mirrorButtonX1(String name) { return keyButtonX1(name) - BUTTON_GAP - mirrorButtonWidth(); }
+
+    private int playButtonX1(String name) { return mirrorButtonX1(name) - BUTTON_GAP - playButtonWidth(); }
 
     private String keyLabel(String name) {
         if (name.equals(capturingMacro)) return "...";
@@ -152,6 +158,13 @@ public class GuiMacroList extends GuiScreen {
         int x1 = playButtonX1(name);
         int y = buttonY(rowY);
         return mouseX >= x1 && mouseX <= x1 + playButtonWidth()
+                && mouseY >= y && mouseY <= y + BUTTON_HEIGHT;
+    }
+
+    private boolean inMirrorButton(int mouseX, int mouseY, String name, int rowY) {
+        int x1 = mirrorButtonX1(name);
+        int y = buttonY(rowY);
+        return mouseX >= x1 && mouseX <= x1 + mirrorButtonWidth()
                 && mouseY >= y && mouseY <= y + BUTTON_HEIGHT;
     }
 
@@ -207,6 +220,8 @@ public class GuiMacroList extends GuiScreen {
                 if (hovered) {
                     drawRowButton(playButtonX1(name), playButtonWidth(), buttonY(rowY), PLAY_LABEL,
                             inPlayButton(mouseX, mouseY, name, rowY));
+                    drawRowButton(mirrorButtonX1(name), mirrorButtonWidth(), buttonY(rowY), MIRROR_LABEL,
+                            inMirrorButton(mouseX, mouseY, name, rowY));
                 }
                 if (hovered || hasBind) {
                     drawRowButton(keyButtonX1(name), keyButtonWidth(name), buttonY(rowY), keyLabel(name),
@@ -318,6 +333,10 @@ public class GuiMacroList extends GuiScreen {
                 runMacro(name);
                 return;
             }
+            if (mouseButton == 0 && inMirrorButton(mouseX, mouseY, name, rowY)) {
+                mirrorMacro(name);
+                return;
+            }
             if (inKeyButton(mouseX, mouseY, name, rowY)) {
                 if (mouseButton == 0) {
                     capturingMacro = name.equals(capturingMacro) ? null : name;
@@ -346,6 +365,15 @@ public class GuiMacroList extends GuiScreen {
             mc.displayGuiScreen(null);
         } catch (Exception e) {
             CyvPlugin.sendChatMessage("Could not run the macro: " + e.getMessage());
+        }
+    }
+
+    private void mirrorMacro(String name) {
+        int ticks = MacroMirror.mirror(name);
+        if (ticks < 0) {
+            CyvPlugin.sendChatMessage("Could not mirror \"" + name + "\".");
+        } else {
+            CyvPlugin.sendChatMessage("Mirrored \"" + name + "\".");
         }
     }
 
