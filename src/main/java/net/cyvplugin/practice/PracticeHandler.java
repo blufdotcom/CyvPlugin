@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.multiplayer.PlayerControllerMP;
+import net.minecraft.client.settings.GameSettings;
 import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
@@ -125,6 +126,31 @@ public class PracticeHandler {
     }
 
     public static void disable() {
+        disable(false);
+    }
+
+    public static void onServerBodyTeleported() {
+        if (!active) return;
+        if (RecordListener.recording) {
+            RecordListener.stopRecording();
+            CyvPlugin.sendChatMessage("Recording cancelled.");
+        }
+        disable(true);
+        releaseMovementKeys();
+    }
+
+    private static void releaseMovementKeys() {
+        GameSettings settings = Minecraft.getMinecraft().gameSettings;
+        KeyBinding.setKeyBindState(settings.keyBindForward.getKeyCode(), false);
+        KeyBinding.setKeyBindState(settings.keyBindBack.getKeyCode(), false);
+        KeyBinding.setKeyBindState(settings.keyBindLeft.getKeyCode(), false);
+        KeyBinding.setKeyBindState(settings.keyBindRight.getKeyCode(), false);
+        KeyBinding.setKeyBindState(settings.keyBindJump.getKeyCode(), false);
+        KeyBinding.setKeyBindState(settings.keyBindSprint.getKeyCode(), false);
+        KeyBinding.setKeyBindState(settings.keyBindSneak.getKeyCode(), false);
+    }
+
+    public static void disable(boolean silent) {
         Minecraft mc = Minecraft.getMinecraft();
         PracticePlayer g = ghost;
         ghost = null;
@@ -154,7 +180,7 @@ public class PracticeHandler {
                     savedController = null;
                 }
                 savedInput = null;
-                CyvPlugin.sendChatMessageOnce("\u00a7cPractice: OFF", PRACTICE_CHAT_ID);
+                if (!silent) CyvPlugin.sendChatMessageOnce("§cPractice: OFF", PRACTICE_CHAT_ID);
                 net.cyvplugin.event.PracticeTimingHandler.onPracticeDisabled();
             }
             active = false;

@@ -13,19 +13,18 @@ import java.util.ArrayList;
 
 public class RecordListener {
 
+    private static final int POST_TELEPORT_TICKS = 3;
+
     public static boolean recording = false;
     public static double startX, startY, startZ;
     public static ArrayList<ArrayList<String>> recordedTicks = new ArrayList<>();
-    public static ArrayList<ArrayList<String>> previousTicks = new ArrayList<>();
 
     private static float lastYaw = 0;
     private static float lastPitch = 0;
     private static float lastAbsYaw = 0;
     private static float lastAbsPitch = 0;
     private static boolean started = false;
-    private static boolean leftStart = false;
-    private static boolean waitingForGround = false;
-    private static double prevX = 0, prevY = 0, prevZ = 0;
+    private static int postTeleportDelay = 0;
 
     public static void startRecording(double x, double y, double z) {
         recording = true;
@@ -33,26 +32,26 @@ public class RecordListener {
         startY = y;
         startZ = z;
         recordedTicks.clear();
-        previousTicks.clear();
         started = false;
-        leftStart = false;
-        waitingForGround = false;
+        postTeleportDelay = 0;
         lastAbsYaw = 0;
         lastAbsPitch = 0;
-        prevX = x;
-        prevY = y;
-        prevZ = z;
     }
 
     public static void stopRecording() {
         recording = false;
         started = false;
-        leftStart = false;
-        waitingForGround = false;
+        postTeleportDelay = 0;
         lastAbsYaw = 0;
         lastAbsPitch = 0;
         recordedTicks.clear();
-        previousTicks.clear();
+    }
+
+    public static void onServerTeleport() {
+        if (!recording) return;
+        recordedTicks.clear();
+        started = false;
+        postTeleportDelay = POST_TELEPORT_TICKS;
     }
 
     @SubscribeEvent
@@ -70,44 +69,13 @@ public class RecordListener {
             return;
         }
 
-        GameSettings options = mc.gameSettings;
-        MovementInput input = PracticeHandler.getControlledMovementInput();
-
-        double dx = player.posX - startX;
-        double dy = player.posY - startY;
-        double dz = player.posZ - startZ;
-        boolean atStart = Math.abs(dx) < 0.0001 && Math.abs(dy) < 0.0001 && Math.abs(dz) < 0.0001;
-
-        if (!atStart) leftStart = true;
-
-        if (leftStart && atStart) {
-            double movedThisTick = Math.sqrt(
-                    (player.posX - prevX) * (player.posX - prevX) +
-                    (player.posZ - prevZ) * (player.posZ - prevZ)
-            );
-            boolean wasTeleported = movedThisTick > 1.0
-                    && Math.abs(player.motionX) < 0.01
-                    && Math.abs(player.motionZ) < 0.01;
-
-            if (wasTeleported) {
-                if (recordedTicks.size() >= 5) {
-                    previousTicks = new ArrayList<>(recordedTicks);
-                }
-                recordedTicks.clear();
-                started = false;
-                leftStart = false;
-                waitingForGround = true;
-            }
-        }
-
-        prevX = player.posX;
-        prevY = player.posY;
-        prevZ = player.posZ;
-
-        if (waitingForGround) {
-            if (player.onGround) waitingForGround = false;
+        if (postTeleportDelay > 0) {
+            postTeleportDelay--;
             return;
         }
+
+        GameSettings options = mc.gameSettings;
+        MovementInput input = PracticeHandler.getControlledMovementInput();
 
         boolean w     = input.moveForward > 0;
         boolean s     = input.moveForward < 0;

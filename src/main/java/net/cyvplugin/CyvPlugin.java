@@ -14,6 +14,7 @@ import net.cyvplugin.update.UpdateNotificationHandler;
 import net.cyvplugin.update.Updater;
 import net.cyvplugin.practice.PracticeHandler;
 import net.cyvplugin.practice.RecordListener;
+import net.cyvplugin.practice.S08Watcher;
 import net.cyvplugin.teleport.CheckpointHandler;
 import net.cyvplugin.teleport.TPHandler;
 import net.minecraft.client.Minecraft;
@@ -29,7 +30,7 @@ import org.apache.logging.log4j.LogManager;
 @Mod(modid = CyvPlugin.MODID, version = CyvPlugin.VERSION, dependencies = "required-after:cyvforge")
 public class CyvPlugin {
     public static final String MODID = "cyvplugin";
-    public static final String VERSION = "0.0.6";
+    public static final String VERSION = "0.0.7";
 
     @Mod.Instance(CyvPlugin.MODID)
     public static CyvPlugin instance;
@@ -46,6 +47,7 @@ public class CyvPlugin {
         MinecraftForge.EVENT_BUS.register(new MacroGuiKeyHandler());
         MinecraftForge.EVENT_BUS.register(new MpkGuiButtonHandler());
         MinecraftForge.EVENT_BUS.register(new MacroInputPriorityHandler());
+        MinecraftForge.EVENT_BUS.register(new S08Watcher());
         MinecraftForge.EVENT_BUS.register(new PracticeHandler());
         MinecraftForge.EVENT_BUS.register(new RecordListener());
         MinecraftForge.EVENT_BUS.register(new PracticeKeyHandler());
