@@ -7,6 +7,7 @@ import net.cyvplugin.macro.FavoritesStore;
 import net.cyvplugin.macro.KeybindStore;
 import net.cyvplugin.macro.MacroMirror;
 import net.cyvplugin.macro.MacroStore;
+import net.cyvplugin.macro.SettingsStore;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.ScaledResolution;
@@ -35,6 +36,13 @@ public class GuiMacroList extends GuiScreen {
     private static final int BUTTON_RIGHT_INSET = 5;
     private static final String PLAY_LABEL = "Run";
     private static final String MIRROR_LABEL = "Mirror";
+    private static final String TOGGLE_TOOLTIP = "Display MACRO text";
+    private static final int SWITCH_W = 30;
+    private static final int SWITCH_H = 12;
+    private static final int SWITCH_KNOB = 10;
+    private static final int TRACK_OFF_COLOR = 0xFF4A4A4A;
+    private static final int TRACK_ON_COLOR = 0xFF55FF55;
+    private static final long SWITCH_ANIM_MS = 180L;
     private static final int BUTTON_BG = 0xB0202020;
     private static final int BUTTON_BG_HOVER = 0xB03A3A3A;
     private static final int ROW_NORMAL = 0x90383838;
@@ -54,11 +62,19 @@ public class GuiMacroList extends GuiScreen {
     private float scroll = 0f;
     private boolean scrollClicked = false;
     private String capturingMacro = null;
+    private float switchAnim;
+    private float switchAnimFrom;
+    private float switchAnimTo;
+    private long switchAnimStart;
 
     @Override
     public void initGui() {
         allMacros = MacroStore.listNames();
         favorites = FavoritesStore.load();
+        switchAnim = SettingsStore.isMacroHudVisible() ? 1f : 0f;
+        switchAnimFrom = switchAnim;
+        switchAnimTo = switchAnim;
+        switchAnimStart = 0L;
         searchField = new GuiTextField(0, fontRendererObj, listX1() + 4, searchY() + 3, searchWidth() - 8, SEARCH_HEIGHT - 6);
         searchField.setMaxStringLength(64);
         searchField.setEnableBackgroundDrawing(false);
@@ -183,6 +199,87 @@ public class GuiMacroList extends GuiScreen {
                 0xFFFFFFFF, true);
     }
 
+    private int switchTrackX1() {
+        return width - 8 - SWITCH_W;
+    }
+
+    private int switchTrackY() {
+        return 8;
+    }
+
+    private int switchRootX1() {
+        return switchTrackX1() - fontRendererObj.getStringWidth("MACRO") - 8;
+    }
+
+    private boolean inMacroHudButton(int mouseX, int mouseY) {
+        return mouseX >= switchRootX1() && mouseX <= switchTrackX1() + SWITCH_W
+                && mouseY >= switchTrackY() && mouseY <= switchTrackY() + SWITCH_H;
+    }
+
+    private void triggerSwitchAnimation() {
+        switchAnimFrom = switchAnim;
+        switchAnimTo = SettingsStore.isMacroHudVisible() ? 1f : 0f;
+        switchAnimStart = System.currentTimeMillis();
+    }
+
+    private void updateSwitchAnimation() {
+        if (switchAnimStart == 0L) {
+            switchAnim = SettingsStore.isMacroHudVisible() ? 1f : 0f;
+            return;
+        }
+        float t = (System.currentTimeMillis() - switchAnimStart) / (float) SWITCH_ANIM_MS;
+        if (t >= 1f) {
+            switchAnim = switchAnimTo;
+            switchAnimStart = 0L;
+            return;
+        }
+        float eased = 1f - (1f - t) * (1f - t) * (1f - t);
+        switchAnim = switchAnimFrom + (switchAnimTo - switchAnimFrom) * eased;
+    }
+
+    private static int lerpColor(int from, int to, float t) {
+        if (t <= 0f) return from;
+        if (t >= 1f) return to;
+        int a = (int) (((from >>> 24) & 0xFF) + ((((to >>> 24) & 0xFF) - ((from >>> 24) & 0xFF)) * t));
+        int r = (int) (((from >> 16) & 0xFF) + ((((to >> 16) & 0xFF) - ((from >> 16) & 0xFF)) * t));
+        int g = (int) (((from >> 8) & 0xFF) + ((((to >> 8) & 0xFF) - ((from >> 8) & 0xFF)) * t));
+        int b = (int) ((from & 0xFF) + (((to & 0xFF) - (from & 0xFF)) * t));
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    private void drawMacroHudSwitch(int mouseX, int mouseY) {
+        updateSwitchAnimation();
+        boolean hovered = inMacroHudButton(mouseX, mouseY);
+
+        int labelX = switchRootX1();
+        int labelY = switchTrackY() + (SWITCH_H - fontRendererObj.FONT_HEIGHT) / 2;
+        CyvThemeBridge.drawString("MACRO", labelX, labelY, 0xFFBBBBBB, true);
+
+        int trackX1 = switchTrackX1();
+        int trackY = switchTrackY();
+        int trackColor = lerpColor(TRACK_OFF_COLOR, TRACK_ON_COLOR, switchAnim);
+        if (hovered) trackColor = CyvThemeBridge.lighten(trackColor, 0.15f);
+        CyvThemeBridge.drawRoundedRect(trackX1, trackY, trackX1 + SWITCH_W, trackY + SWITCH_H,
+                SWITCH_H / 2f, trackColor);
+
+        int knobX = Math.round(trackX1 + 1 + (SWITCH_W - SWITCH_KNOB - 2) * switchAnim);
+        int knobY = trackY + (SWITCH_H - SWITCH_KNOB) / 2;
+        CyvThemeBridge.drawRoundedRect(knobX, knobY, knobX + SWITCH_KNOB, knobY + SWITCH_KNOB,
+                SWITCH_KNOB / 2f, 0xFFFFFFFF);
+    }
+
+    private void drawMacroHudTooltip(int mouseX, int mouseY) {
+        if (!inMacroHudButton(mouseX, mouseY)) return;
+        int tipWidth = fontRendererObj.getStringWidth(TOGGLE_TOOLTIP) + 8;
+        int x1 = switchTrackX1() + SWITCH_W - tipWidth;
+        if (x1 < 2) x1 = 2;
+        int y1 = switchTrackY() + SWITCH_H + 3;
+        int y2 = y1 + BUTTON_HEIGHT - 1;
+        CyvThemeBridge.drawRoundedRect(x1, y1, x1 + tipWidth, y2, 3, BUTTON_BG);
+        CyvThemeBridge.drawString(TOGGLE_TOOLTIP, x1 + 4,
+                y1 + (y2 - y1 - fontRendererObj.FONT_HEIGHT) / 2, 0xFFFFFFFF, true);
+    }
+
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         drawDefaultBackground();
@@ -234,6 +331,8 @@ public class GuiMacroList extends GuiScreen {
 
         drawSearchBox();
         drawScrollbar(mouseX, mouseY);
+        drawMacroHudSwitch(mouseX, mouseY);
+        drawMacroHudTooltip(mouseX, mouseY);
     }
 
     private int rowColor(boolean favorite, boolean hovered) {
@@ -313,6 +412,12 @@ public class GuiMacroList extends GuiScreen {
     @Override
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         super.mouseClicked(mouseX, mouseY, mouseButton);
+
+        if (mouseButton == 0 && inMacroHudButton(mouseX, mouseY)) {
+            SettingsStore.setMacroHudVisible(!SettingsStore.isMacroHudVisible());
+            triggerSwitchAnimation();
+            return;
+        }
 
         if (mouseButton == 0 && inSearchBox(mouseX, mouseY)) {
             searchField.setFocused(true);

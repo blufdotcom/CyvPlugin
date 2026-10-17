@@ -3,6 +3,7 @@ package net.cyvplugin;
 import net.cyvplugin.bridge.CyvThemeBridge;
 import net.cyvplugin.command.CommandCyvPlugin;
 import net.cyvplugin.event.MacroGuiKeyHandler;
+import net.cyvplugin.event.MacroHudHandler;
 import net.cyvplugin.event.MacroInputPriorityHandler;
 import net.cyvplugin.event.MacroKeybindHandler;
 import net.cyvplugin.event.MacroMenuKeyHandler;
@@ -30,7 +31,7 @@ import org.apache.logging.log4j.LogManager;
 @Mod(modid = CyvPlugin.MODID, version = CyvPlugin.VERSION, dependencies = "required-after:cyvforge")
 public class CyvPlugin {
     public static final String MODID = "cyvplugin";
-    public static final String VERSION = "0.0.7";
+    public static final String VERSION = "0.0.8";
 
     @Mod.Instance(CyvPlugin.MODID)
     public static CyvPlugin instance;
@@ -46,6 +47,11 @@ public class CyvPlugin {
         MinecraftForge.EVENT_BUS.register(new MacroKeybindHandler());
         MinecraftForge.EVENT_BUS.register(new MacroGuiKeyHandler());
         MinecraftForge.EVENT_BUS.register(new MpkGuiButtonHandler());
+        if (MacroHudHandler.install()) {
+            MinecraftForge.EVENT_BUS.register(new MacroHudHandler());
+        } else {
+            LogManager.getLogger().warn("CyvPlugin: could not hook HUDManager, MACRO HUD toggle disabled");
+        }
         MinecraftForge.EVENT_BUS.register(new MacroInputPriorityHandler());
         MinecraftForge.EVENT_BUS.register(new S08Watcher());
         MinecraftForge.EVENT_BUS.register(new PracticeHandler());
