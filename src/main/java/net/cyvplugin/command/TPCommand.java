@@ -47,17 +47,9 @@ public class TPCommand extends CommandBase {
             throw new CommandException("TP disabled in practice mode.");
         }
 
-        if (!args[0].startsWith("~")) {
-            try {
-                Double.parseDouble(args[0]);
-            } catch (NumberFormatException e) {
-                player.sendChatMessage("/tp " + String.join(" ", args));
-                return;
-            }
-        }
-
-        if (args.length < 3) {
-            throw new CommandException("Usage: " + getCommandUsage(sender));
+        if (args.length < 3 || (!args[0].startsWith("~") && !isNumeric(args[0]))) {
+            player.sendChatMessage("/tp " + String.join(" ", args));
+            return;
         }
 
         double x = parseCoord(args[0], player.posX);
@@ -89,6 +81,15 @@ public class TPCommand extends CommandBase {
         player.sendChatMessage(cmd);
 
         TPHandler.startTracking(x, y, z, yaw, pitch, hasRotation);
+    }
+
+    private static boolean isNumeric(String s) {
+        try {
+            Double.parseDouble(s);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     private static double parseCoord(String arg, double current) throws CommandException {
