@@ -9,11 +9,39 @@ final class Version {
         String[] b = normalize(current).split("\\.");
         int n = Math.max(a.length, b.length);
         for (int i = 0; i < n; i++) {
-            int x = i < a.length ? parseInt(a[i]) : 0;
-            int y = i < b.length ? parseInt(b[i]) : 0;
-            if (x != y) return x > y;
+            String x = i < a.length ? a[i].trim() : "";
+            String y = i < b.length ? b[i].trim() : "";
+            int cmp = compareSegment(x, y);
+            if (cmp != 0) return cmp > 0;
         }
         return false;
+    }
+
+    private static int compareSegment(String x, String y) {
+        int nx = leadingNumber(x);
+        int ny = leadingNumber(y);
+        if (nx != ny) return nx < ny ? -1 : 1;
+        return suffixOf(x).compareTo(suffixOf(y));
+    }
+
+    private static int leadingNumber(String s) {
+        int end = digitsLength(s);
+        if (end == 0) return 0;
+        try {
+            return Integer.parseInt(s.substring(0, end));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private static String suffixOf(String s) {
+        return s.substring(digitsLength(s));
+    }
+
+    private static int digitsLength(String s) {
+        int end = 0;
+        while (end < s.length() && Character.isDigit(s.charAt(end))) end++;
+        return end;
     }
 
     private static String normalize(String version) {
@@ -22,13 +50,5 @@ final class Version {
         int dash = s.indexOf('-');
         if (dash >= 0) s = s.substring(0, dash);
         return s;
-    }
-
-    private static int parseInt(String s) {
-        try {
-            return Integer.parseInt(s.trim());
-        } catch (NumberFormatException e) {
-            return 0;
-        }
     }
 }
