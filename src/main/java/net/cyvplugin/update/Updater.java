@@ -32,6 +32,7 @@ public final class Updater {
     private static final int READ_TIMEOUT = 15000;
     private static final Pattern SHA256 = Pattern.compile("[a-fA-F0-9]{64}");
     private static volatile boolean running = false;
+    private static volatile String failedVersion;
 
     private Updater() {}
 
@@ -72,6 +73,11 @@ public final class Updater {
             if (!Version.isNewer(latestVersion, CyvPlugin.VERSION)) {
                 LogManager.getLogger().info("CyvPlugin up to date (" + CyvPlugin.VERSION + ")");
                 UpdateState.status = UpdateState.STATUS_UP_TO_DATE;
+                return;
+            }
+
+            if (latestVersion.equals(failedVersion)) {
+                UpdateState.status = UpdateState.STATUS_ERROR;
                 return;
             }
 
@@ -117,7 +123,14 @@ public final class Updater {
                 return;
             }
 
-            replace(temp, current);
+            try {
+                replace(temp, current, latestVersion);
+            } catch (Exception e) {
+                failedVersion = latestVersion;
+                throw e;
+            } finally {
+                temp.delete();
+            }
             UpdateState.updateReady = true;
             UpdateState.status = UpdateState.STATUS_RESTART;
             UpdateState.error = null;
@@ -224,13 +237,41 @@ public final class Updater {
         }
     }
 
-    private static void replace(File source, File target) throws Exception {
+    private static void replace(File source, File target, String version) throws Exception {
         try {
             Files.move(source.toPath(), target.toPath(),
                     StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-        } catch (Exception e) {
-            Files.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return;
+        } catch (Exception ignored) {
         }
+        try {
+            Files.move(source.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return;
+        } catch (Exception e) {
+            if (!isWindows()) throw e;
+        }
+        // Windows: the running jar is locked, so save the new jar under its own name
+        // and delete the old one once the game has closed.
+        File fresh = new File(target.getParentFile(), "cyvplugin-" + version + ".jar");
+        Files.move(source.toPath(), fresh.toPath(), StandardCopyOption.REPLACE_EXISTING);
+        deleteAfterExit(target);
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase().contains("win");
+    }
+
+    private static void deleteAfterExit(final File old) {
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    new ProcessBuilder("cmd", "/c", "ping", "-n", "4", "127.0.0.1", ">nul",
+                            "&", "del", "/f", "/q", old.getAbsolutePath()).start();
+                } catch (Exception ignored) {
+                }
+            }
+        }, "CyvPlugin-Cleanup"));
     }
 
     private static HttpURLConnection open(String url) throws Exception {
