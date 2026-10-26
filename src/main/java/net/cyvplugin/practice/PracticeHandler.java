@@ -125,8 +125,7 @@ public class PracticeHandler {
         mc.playerController = new PracticePlayerController(mc, mc.getNetHandler());
 
         mc.setRenderViewEntity(ghost);
-        CyvPlugin.sendChatMessageOnce("\u00a7aPractice: ON", PRACTICE_CHAT_ID);
-        net.cyvplugin.event.PracticeTimingHandler.onPracticeEnabled();
+        CyvPlugin.sendChatMessageOnce("§aPractice: ON", PRACTICE_CHAT_ID);
     }
 
     public static void disable() {
@@ -185,7 +184,6 @@ public class PracticeHandler {
                 }
                 savedInput = null;
                 if (!silent) CyvPlugin.sendChatMessageOnce("§cPractice: OFF", PRACTICE_CHAT_ID);
-                net.cyvplugin.event.PracticeTimingHandler.onPracticeDisabled();
             }
             active = false;
             repTicks = 0;
