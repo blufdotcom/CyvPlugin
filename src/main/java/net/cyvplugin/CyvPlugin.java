@@ -30,7 +30,7 @@ import org.apache.logging.log4j.LogManager;
 @Mod(modid = CyvPlugin.MODID, version = CyvPlugin.VERSION, dependencies = "required-after:cyvforge")
 public class CyvPlugin {
     public static final String MODID = "cyvplugin";
-    public static final String VERSION = "0.0.10";
+    public static final String VERSION = "0.0.11";
 
     @Mod.Instance(CyvPlugin.MODID)
     public static CyvPlugin instance;

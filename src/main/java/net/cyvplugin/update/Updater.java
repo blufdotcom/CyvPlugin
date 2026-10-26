@@ -116,10 +116,17 @@ public final class Updater {
             UpdateState.status = UpdateState.STATUS_DOWNLOADING;
             File temp = new File(current.getParentFile(), ".cyvplugin-" + latestVersion + ".download");
             String actual = download(jarUrl, temp);
-            if (actual == null || !actual.equals(expected)) {
+            if (actual == null) {
+                temp.delete();
+                fail("Download failed");
+                LogManager.getLogger().warn("CyvPlugin update aborted: could not download " + jarUrl);
+                return;
+            }
+            if (!actual.equals(expected)) {
                 temp.delete();
                 fail("SHA-256 mismatch");
-                LogManager.getLogger().warn("CyvPlugin update aborted: sha256 mismatch");
+                LogManager.getLogger().warn("CyvPlugin update aborted: sha256 mismatch (expected "
+                        + expected + ", got " + actual + ")");
                 return;
             }
 
@@ -217,6 +224,8 @@ public final class Updater {
         try {
             connection = open(url);
             connection.setRequestProperty("User-Agent", "CyvPlugin-Updater");
+            // Java sends no Accept by default; GitHub release assets answer 406 without one.
+            connection.setRequestProperty("Accept", "*/*");
             if (connection.getResponseCode() < 200 || connection.getResponseCode() >= 300) return null;
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             try (InputStream in = new BufferedInputStream(connection.getInputStream());
