@@ -17,6 +17,7 @@ public class S08Watcher {
 
     private static volatile Teleport pending;
     private static NetworkManager installedOn;
+    private Teleport tickTeleport;
 
     private static final class Teleport {
         final double x, y, z;
@@ -48,13 +49,26 @@ public class S08Watcher {
                 packet.func_179834_f().contains(S08PacketPlayerPosLook.EnumFlags.Z));
     }
 
+    /**Consumed at ClientTick START: the packet has already been applied by then (the
+     * scheduled-task flush runs before the tick) and the player has not moved yet, so the
+     * input lock can cover this very tick. The teleport is stashed for the END handler.*/
     @SubscribeEvent
-    public void onTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
+    public void onTickStart(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.START) return;
         ensureInstalled();
         Teleport t = pending;
         if (t == null) return;
         pending = null;
+        tickTeleport = t;
+        RecordListener.startInputLock();
+    }
+
+    @SubscribeEvent
+    public void onTick(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        Teleport t = tickTeleport;
+        tickTeleport = null;
+        if (t == null) return;
         if (PracticeHandler.isActive()) {
             PracticeHandler.onServerBodyTeleported();
             return;

@@ -15,6 +15,7 @@ public final class CyvForgeBridge {
     private static final String KEY_INPUT_HANDLER = "net.cyvforge.event.events.KeyInputHandler";
     private static final String RUN_MACRO_KEYBINDING = "net.cyvforge.keybinding.KeybindingRunMacro";
     private static final String HUD_MANAGER = "net.cyvforge.hud.HUDManager";
+    private static final String TOGGLE_SPRINT = "net.cyvforge.keybinding.KeybindingTogglesprint";
 
     private CyvForgeBridge() {}
 
@@ -146,6 +147,21 @@ public final class CyvForgeBridge {
     public static boolean isMacroRunning() throws Exception {
         Field field = findClass(COMMAND_MACRO).getField("macroRunning");
         return field.getInt(null) != 0;
+    }
+
+    public static boolean isToggleSprintOn() throws Exception {
+        Field field = findClass(TOGGLE_SPRINT).getField("sprintToggled");
+        return field.getBoolean(null);
+    }
+
+    /**Sprint flag of the macro's last line: [w][a][s][d][space][sprint][sneak][rmb][yaw][pitch].*/
+    public static boolean lastMacroLineSprint() throws Exception {
+        Field field = findClass(COMMAND_MACRO).getField("macro");
+        java.util.List<?> macro = (java.util.List<?>) field.get(null);
+        if (macro == null || macro.isEmpty()) return false;
+        java.util.List<?> line = (java.util.List<?>) macro.get(macro.size() - 1);
+        if (line == null || line.size() <= 5) return false;
+        return Boolean.parseBoolean(String.valueOf(line.get(5)));
     }
 
     private static Class<?> findClass(String name) throws ClassNotFoundException {

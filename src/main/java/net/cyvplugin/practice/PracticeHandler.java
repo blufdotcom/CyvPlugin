@@ -20,10 +20,12 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MovementInput;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraftforge.client.event.EntityViewRenderEvent;
 import net.minecraftforge.client.event.MouseEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.client.event.RenderHandEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent;
 import net.minecraftforge.fml.common.gameevent.PlayerEvent;
@@ -77,6 +79,8 @@ public class PracticeHandler {
 
         ghost = new PracticePlayer(mc.theWorld, player.getGameProfile(), mc);
         ghost.setLocationAndAngles(player.posX, player.posY, player.posZ, saveYaw, savePitch);
+        ghost.prevRotationYaw = player.prevRotationYaw;
+        ghost.prevRotationPitch = player.prevRotationPitch;
         ghost.prevRotationYawHead = player.prevRotationYawHead;
         ghost.rotationYawHead = player.rotationYawHead;
         ghost.prevSwingProgress = 0.0F;
@@ -139,7 +143,7 @@ public class PracticeHandler {
         releaseMovementKeys();
     }
 
-    private static void releaseMovementKeys() {
+    static void releaseMovementKeys() {
         GameSettings settings = Minecraft.getMinecraft().gameSettings;
         KeyBinding.setKeyBindState(settings.keyBindForward.getKeyCode(), false);
         KeyBinding.setKeyBindState(settings.keyBindBack.getKeyCode(), false);
@@ -232,18 +236,47 @@ public class PracticeHandler {
         reportBodyToServer(player);
     }
 
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public void onRenderTickStart(TickEvent.RenderTickEvent event) {
+        if (event.phase != TickEvent.Phase.START) return;
+        syncGhostAngles();
+    }
+
+    /**The END sync keeps the yaw RecordListener samples at ClientTick END up to date with
+     * this frame's mouse turn, so recording must keep reading the ghost here.*/
     @SubscribeEvent
-    public void onRenderTick(TickEvent.RenderTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || !active) return;
+    public void onRenderTickEnd(TickEvent.RenderTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+        syncGhostAngles();
+    }
+
+    private static void syncGhostAngles() {
+        if (!active) return;
         Minecraft mc = Minecraft.getMinecraft();
         EntityPlayerSP player = mc.thePlayer;
         if (player == null || mc.theWorld == null || ghost == null || ghost.isDead) return;
+        ghost.prevRotationYaw = player.prevRotationYaw;
         ghost.rotationYaw = player.rotationYaw;
+        ghost.prevRotationPitch = player.prevRotationPitch;
         ghost.rotationPitch = player.rotationPitch;
+        ghost.prevRotationYawHead = player.prevRotationYawHead;
         ghost.rotationYawHead = player.rotationYawHead;
-        ghost.prevRotationYaw = ghost.rotationYaw;
-        ghost.prevRotationPitch = ghost.rotationPitch;
-        ghost.prevRotationYawHead = ghost.rotationYawHead;
+    }
+
+    /**orientCamera interpolates prevRotation* -> rotation of the render view entity, but it
+     * runs before the frame's RenderTick END sync and CyvForge applies the macro rotation a
+     * tick earlier, so the ghost would be a tick + a frame behind with prev == rotation.
+     * Recomputing yaw/pitch from the frozen body here (same formula, hence the +180F) makes
+     * the view identical to a non-practice run: macro delta, smoothMacro partials and this
+     * frame's mouse turn included.*/
+    @SubscribeEvent
+    public void onCameraSetup(EntityViewRenderEvent.CameraSetup event) {
+        if (!active) return;
+        EntityPlayerSP player = Minecraft.getMinecraft().thePlayer;
+        if (player == null) return;
+        float pt = (float) event.renderPartialTicks;
+        event.yaw = player.prevRotationYaw + (player.rotationYaw - player.prevRotationYaw) * pt + 180.0F;
+        event.pitch = player.prevRotationPitch + (player.rotationPitch - player.prevRotationPitch) * pt;
     }
 
     @SubscribeEvent

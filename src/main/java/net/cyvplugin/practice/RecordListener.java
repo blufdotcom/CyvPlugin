@@ -3,9 +3,12 @@ package net.cyvplugin.practice;
 import net.cyvplugin.CyvPlugin;
 import net.cyvplugin.bridge.CyvForgeBridge;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.MovementInput;
+import net.minecraftforge.client.event.EntityViewRenderEvent;
+import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.TickEvent;
 
@@ -14,6 +17,7 @@ import java.util.ArrayList;
 public class RecordListener {
 
     private static final int POST_TELEPORT_TICKS = 3;
+    private static final int INPUT_LOCK_TICKS = 2;
 
     public static boolean recording = false;
     public static double startX, startY, startZ;
@@ -26,6 +30,10 @@ public class RecordListener {
     private static boolean started = false;
     private static int postTeleportDelay = 0;
 
+    private static int inputLockTicks = 0;
+    private static float frozenYaw = 0;
+    private static float frozenPitch = 0;
+
     public static void startRecording(double x, double y, double z) {
         recording = true;
         startX = x;
@@ -34,6 +42,7 @@ public class RecordListener {
         recordedTicks.clear();
         started = false;
         postTeleportDelay = 0;
+        inputLockTicks = 0;
         lastAbsYaw = 0;
         lastAbsPitch = 0;
     }
@@ -42,9 +51,22 @@ public class RecordListener {
         recording = false;
         started = false;
         postTeleportDelay = 0;
+        inputLockTicks = 0;
         lastAbsYaw = 0;
         lastAbsPitch = 0;
         recordedTicks.clear();
+    }
+
+    /**Two ticks of dead input after a server teleport: the movement keys are released and
+     * the camera is pinned to the post-teleport angle, so neither held keys nor the mouse
+     * (nor the rotation the server wrote) can leak into the recording.*/
+    public static void startInputLock() {
+        if (!recording) return;
+        inputLockTicks = INPUT_LOCK_TICKS;
+    }
+
+    public static boolean isInputLocked() {
+        return recording && inputLockTicks > 0;
     }
 
     public static void onServerTeleport() {
@@ -71,6 +93,14 @@ public class RecordListener {
 
         if (postTeleportDelay > 0) {
             postTeleportDelay--;
+            return;
+        }
+
+        if (isInputLocked()) {
+            lastYaw = player.rotationYaw;
+            lastPitch = player.rotationPitch;
+            lastAbsYaw = player.rotationYaw;
+            lastAbsPitch = player.rotationPitch;
             return;
         }
 
@@ -131,5 +161,40 @@ public class RecordListener {
         lastAbsPitch = player.rotationPitch;
 
         recordedTicks.add(tick);
+    }
+
+    @SubscribeEvent
+    public void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (!isInputLocked()) return;
+        if (event.player != Minecraft.getMinecraft().thePlayer) return;
+        PracticeHandler.releaseMovementKeys();
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public void onRenderTickStart(TickEvent.RenderTickEvent event) {
+        if (event.phase != TickEvent.Phase.START || !isInputLocked()) return;
+        EntityPlayerSP player = Minecraft.getMinecraft().thePlayer;
+        if (player == null) return;
+        frozenYaw = player.rotationYaw;
+        frozenPitch = player.rotationPitch;
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public void onRenderTickEnd(TickEvent.RenderTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || !recording || inputLockTicks <= 0) return;
+        EntityPlayerSP player = Minecraft.getMinecraft().thePlayer;
+        if (player != null) {
+            player.rotationYaw = frozenYaw;
+            player.rotationPitch = frozenPitch;
+        }
+        inputLockTicks--;
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public void onCameraSetup(EntityViewRenderEvent.CameraSetup event) {
+        if (!isInputLocked()) return;
+        if (Minecraft.getMinecraft().thePlayer == null) return;
+        event.yaw = frozenYaw + 180.0F;
+        event.pitch = frozenPitch;
     }
 }
