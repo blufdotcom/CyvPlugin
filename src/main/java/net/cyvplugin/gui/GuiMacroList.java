@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 public class GuiMacroList extends GuiScreen {
@@ -43,6 +44,10 @@ public class GuiMacroList extends GuiScreen {
     private static final int TRACK_OFF_COLOR = 0xFF4A4A4A;
     private static final int TRACK_ON_COLOR = 0xFF55FF55;
     private static final long SWITCH_ANIM_MS = 180L;
+    private static final int SLIDER_TRACK_W = 60;
+    private static final int SLIDER_TRACK_H = 4;
+    private static final int SLIDER_KNOB_W = 6;
+    private static final int SLIDER_KNOB_H = 10;
     private static final int BUTTON_BG = 0xB0202020;
     private static final int BUTTON_BG_HOVER = 0xB03A3A3A;
     private static final int ROW_NORMAL = 0x90383838;
@@ -62,19 +67,16 @@ public class GuiMacroList extends GuiScreen {
     private float scroll = 0f;
     private boolean scrollClicked = false;
     private String capturingMacro = null;
-    private float switchAnim;
-    private float switchAnimFrom;
-    private float switchAnimTo;
-    private long switchAnimStart;
+    private final SwitchAnim macroSwitch = new SwitchAnim();
+    private final SwitchAnim leanSwitch = new SwitchAnim();
+    private boolean leanSliderDragging = false;
 
     @Override
     public void initGui() {
         allMacros = MacroStore.listNames();
         favorites = FavoritesStore.load();
-        switchAnim = SettingsStore.isMacroHudVisible() ? 1f : 0f;
-        switchAnimFrom = switchAnim;
-        switchAnimTo = switchAnim;
-        switchAnimStart = 0L;
+        macroSwitch.set(SettingsStore.isMacroHudVisible());
+        leanSwitch.set(SettingsStore.isLeanEnabled());
         searchField = new GuiTextField(0, fontRendererObj, listX1() + 4, searchY() + 3, searchWidth() - 8, SEARCH_HEIGHT - 6);
         searchField.setMaxStringLength(64);
         searchField.setEnableBackgroundDrawing(false);
@@ -207,34 +209,74 @@ public class GuiMacroList extends GuiScreen {
         return 8;
     }
 
-    private int switchRootX1() {
-        return switchTrackX1() - fontRendererObj.getStringWidth("MACRO") - 8;
+    private int leanSwitchY() {
+        return switchTrackY() + SWITCH_H + 4;
     }
 
-    private boolean inMacroHudButton(int mouseX, int mouseY) {
-        return mouseX >= switchRootX1() && mouseX <= switchTrackX1() + SWITCH_W
-                && mouseY >= switchTrackY() && mouseY <= switchTrackY() + SWITCH_H;
+    private int leanSliderY() {
+        return leanSwitchY() + SWITCH_H + 4;
     }
 
-    private void triggerSwitchAnimation() {
-        switchAnimFrom = switchAnim;
-        switchAnimTo = SettingsStore.isMacroHudVisible() ? 1f : 0f;
-        switchAnimStart = System.currentTimeMillis();
+    private int leanSliderX1() {
+        return switchTrackX1() + SWITCH_W - SLIDER_TRACK_W;
     }
 
-    private void updateSwitchAnimation() {
-        if (switchAnimStart == 0L) {
-            switchAnim = SettingsStore.isMacroHudVisible() ? 1f : 0f;
-            return;
+    private int switchRootX1(String label) {
+        return switchTrackX1() - fontRendererObj.getStringWidth(label) - 8;
+    }
+
+    private boolean inSwitch(String label, int y, int mouseX, int mouseY) {
+        return mouseX >= switchRootX1(label) && mouseX <= switchTrackX1() + SWITCH_W
+                && mouseY >= y && mouseY <= y + SWITCH_H;
+    }
+
+    private boolean inLeanSlider(int mouseX, int mouseY) {
+        int y = leanSliderY() + (SWITCH_H - SLIDER_KNOB_H) / 2 - 1;
+        return mouseX >= leanSliderX1() && mouseX <= leanSliderX1() + SLIDER_TRACK_W
+                && mouseY >= y && mouseY <= y + SLIDER_KNOB_H + 2;
+    }
+
+    private void setLeanAngleFromMouse(int mouseX) {
+        float t = (mouseX - leanSliderX1()) / (float) SLIDER_TRACK_W;
+        if (t < 0f) t = 0f;
+        if (t > 1f) t = 1f;
+        SettingsStore.setLeanAngle(Math.round((SettingsStore.LEAN_MIN
+                + (SettingsStore.LEAN_MAX - SettingsStore.LEAN_MIN) * t) * 10f) / 10f);
+    }
+
+    private static final class SwitchAnim {
+        private float value;
+        private float from;
+        private float to;
+        private long start;
+
+        private void set(boolean on) {
+            value = on ? 1f : 0f;
+            from = value;
+            to = value;
+            start = 0L;
         }
-        float t = (System.currentTimeMillis() - switchAnimStart) / (float) SWITCH_ANIM_MS;
-        if (t >= 1f) {
-            switchAnim = switchAnimTo;
-            switchAnimStart = 0L;
-            return;
+
+        private void trigger(boolean on) {
+            from = value;
+            to = on ? 1f : 0f;
+            start = System.currentTimeMillis();
         }
-        float eased = 1f - (1f - t) * (1f - t) * (1f - t);
-        switchAnim = switchAnimFrom + (switchAnimTo - switchAnimFrom) * eased;
+
+        private void update(boolean on) {
+            if (start == 0L) {
+                value = on ? 1f : 0f;
+                return;
+            }
+            float t = (System.currentTimeMillis() - start) / (float) SWITCH_ANIM_MS;
+            if (t >= 1f) {
+                value = to;
+                start = 0L;
+                return;
+            }
+            float eased = 1f - (1f - t) * (1f - t) * (1f - t);
+            value = from + (to - from) * eased;
+        }
     }
 
     private static int lerpColor(int from, int to, float t) {
@@ -247,37 +289,56 @@ public class GuiMacroList extends GuiScreen {
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
-    private void drawMacroHudSwitch(int mouseX, int mouseY) {
-        updateSwitchAnimation();
-        boolean hovered = inMacroHudButton(mouseX, mouseY);
+    private void drawSwitch(String label, int y, SwitchAnim anim, boolean on, int mouseX, int mouseY) {
+        anim.update(on);
+        boolean hovered = inSwitch(label, y, mouseX, mouseY);
 
-        int labelX = switchRootX1();
-        int labelY = switchTrackY() + (SWITCH_H - fontRendererObj.FONT_HEIGHT) / 2;
-        CyvThemeBridge.drawString("MACRO", labelX, labelY, 0xFFBBBBBB, true);
+        int labelX = switchRootX1(label);
+        int labelY = y + (SWITCH_H - fontRendererObj.FONT_HEIGHT) / 2;
+        CyvThemeBridge.drawString(label, labelX, labelY, 0xFFBBBBBB, true);
 
         int trackX1 = switchTrackX1();
-        int trackY = switchTrackY();
-        int trackColor = lerpColor(TRACK_OFF_COLOR, TRACK_ON_COLOR, switchAnim);
+        int trackColor = lerpColor(TRACK_OFF_COLOR, TRACK_ON_COLOR, anim.value);
         if (hovered) trackColor = CyvThemeBridge.lighten(trackColor, 0.15f);
-        CyvThemeBridge.drawRoundedRect(trackX1, trackY, trackX1 + SWITCH_W, trackY + SWITCH_H,
+        CyvThemeBridge.drawRoundedRect(trackX1, y, trackX1 + SWITCH_W, y + SWITCH_H,
                 SWITCH_H / 2f, trackColor);
 
-        int knobX = Math.round(trackX1 + 1 + (SWITCH_W - SWITCH_KNOB - 2) * switchAnim);
-        int knobY = trackY + (SWITCH_H - SWITCH_KNOB) / 2;
+        int knobX = Math.round(trackX1 + 1 + (SWITCH_W - SWITCH_KNOB - 2) * anim.value);
+        int knobY = y + (SWITCH_H - SWITCH_KNOB) / 2;
         CyvThemeBridge.drawRoundedRect(knobX, knobY, knobX + SWITCH_KNOB, knobY + SWITCH_KNOB,
                 SWITCH_KNOB / 2f, 0xFFFFFFFF);
     }
 
-    private void drawMacroHudTooltip(int mouseX, int mouseY) {
-        if (!inMacroHudButton(mouseX, mouseY)) return;
-        int tipWidth = fontRendererObj.getStringWidth(TOGGLE_TOOLTIP) + 8;
+    private void drawTooltip(String text, int y, int mouseX, int mouseY) {
+        if (!inSwitch("MACRO", y, mouseX, mouseY)) return;
+        int tipWidth = fontRendererObj.getStringWidth(text) + 8;
         int x1 = switchTrackX1() + SWITCH_W - tipWidth;
         if (x1 < 2) x1 = 2;
-        int y1 = switchTrackY() + SWITCH_H + 3;
+        int y1 = y + SWITCH_H + 3;
         int y2 = y1 + BUTTON_HEIGHT - 1;
         CyvThemeBridge.drawRoundedRect(x1, y1, x1 + tipWidth, y2, 3, BUTTON_BG);
-        CyvThemeBridge.drawString(TOGGLE_TOOLTIP, x1 + 4,
+        CyvThemeBridge.drawString(text, x1 + 4,
                 y1 + (y2 - y1 - fontRendererObj.FONT_HEIGHT) / 2, 0xFFFFFFFF, true);
+    }
+
+    private void drawLeanSlider(int mouseX, int mouseY) {
+        float angle = SettingsStore.getLeanAngle();
+        String label = String.format(Locale.ROOT, "%.1f", (double) angle);
+        int labelX = leanSliderX1() - 8 - fontRendererObj.getStringWidth(label);
+        int labelY = leanSliderY() + (SWITCH_H - fontRendererObj.FONT_HEIGHT) / 2;
+        CyvThemeBridge.drawString(label, labelX, labelY, 0xFFBBBBBB, true);
+
+        boolean hovered = leanSliderDragging || inLeanSlider(mouseX, mouseY);
+        int trackX1 = leanSliderX1();
+        int trackY = leanSliderY() + (SWITCH_H - SLIDER_TRACK_H) / 2;
+        CyvThemeBridge.drawRoundedRect(trackX1, trackY, trackX1 + SLIDER_TRACK_W, trackY + SLIDER_TRACK_H,
+                SLIDER_TRACK_H / 2f, SCROLL_TRACK);
+
+        float t = (angle - SettingsStore.LEAN_MIN) / (SettingsStore.LEAN_MAX - SettingsStore.LEAN_MIN);
+        int knobX = Math.round(trackX1 + (SLIDER_TRACK_W - SLIDER_KNOB_W) * t);
+        int knobY = leanSliderY() + (SWITCH_H - SLIDER_KNOB_H) / 2;
+        CyvThemeBridge.drawRoundedRect(knobX, knobY, knobX + SLIDER_KNOB_W, knobY + SLIDER_KNOB_H,
+                SLIDER_KNOB_W / 2f, hovered ? SCROLL_KNOB_HOVER : SCROLL_KNOB);
     }
 
     @Override
@@ -331,8 +392,10 @@ public class GuiMacroList extends GuiScreen {
 
         drawSearchBox();
         drawScrollbar(mouseX, mouseY);
-        drawMacroHudSwitch(mouseX, mouseY);
-        drawMacroHudTooltip(mouseX, mouseY);
+        drawSwitch("MACRO", switchTrackY(), macroSwitch, SettingsStore.isMacroHudVisible(), mouseX, mouseY);
+        drawSwitch("LEAN", leanSwitchY(), leanSwitch, SettingsStore.isLeanEnabled(), mouseX, mouseY);
+        drawLeanSlider(mouseX, mouseY);
+        drawTooltip(TOGGLE_TOOLTIP, switchTrackY(), mouseX, mouseY);
     }
 
     private int rowColor(boolean favorite, boolean hovered) {
@@ -413,9 +476,21 @@ public class GuiMacroList extends GuiScreen {
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         super.mouseClicked(mouseX, mouseY, mouseButton);
 
-        if (mouseButton == 0 && inMacroHudButton(mouseX, mouseY)) {
+        if (mouseButton == 0 && inSwitch("MACRO", switchTrackY(), mouseX, mouseY)) {
             SettingsStore.setMacroHudVisible(!SettingsStore.isMacroHudVisible());
-            triggerSwitchAnimation();
+            macroSwitch.trigger(SettingsStore.isMacroHudVisible());
+            return;
+        }
+
+        if (mouseButton == 0 && inSwitch("LEAN", leanSwitchY(), mouseX, mouseY)) {
+            SettingsStore.setLeanEnabled(!SettingsStore.isLeanEnabled());
+            leanSwitch.trigger(SettingsStore.isLeanEnabled());
+            return;
+        }
+
+        if (mouseButton == 0 && inLeanSlider(mouseX, mouseY)) {
+            leanSliderDragging = true;
+            setLeanAngleFromMouse(mouseX);
             return;
         }
 
@@ -495,6 +570,7 @@ public class GuiMacroList extends GuiScreen {
 
     @Override
     public void mouseClickMove(int mouseX, int mouseY, int mouseButton, long timeSinceLastClick) {
+        if (leanSliderDragging) setLeanAngleFromMouse(mouseX);
         if (scrollClicked && maxScroll > 0) {
             int sbH = scrollbarHeight();
             scroll = (mouseY - listY1() - sbH / 2f) / (listHeight() - sbH) * maxScroll;
@@ -506,5 +582,6 @@ public class GuiMacroList extends GuiScreen {
     @Override
     public void mouseReleased(int mouseX, int mouseY, int state) {
         scrollClicked = false;
+        leanSliderDragging = false;
     }
 }
