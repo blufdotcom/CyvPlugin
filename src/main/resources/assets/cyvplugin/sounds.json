@@ -1,0 +1,42 @@
+{
+  "chess": {
+    "category": "master",
+    "sounds": ["chess"]
+  },
+  "fart": {
+    "category": "master",
+    "sounds": ["fart"]
+  },
+  "boom": {
+    "category": "master",
+    "sounds": ["boom"]
+  },
+  "click": {
+    "category": "master",
+    "sounds": ["click"]
+  },
+  "meowrgh": {
+    "category": "master",
+    "sounds": ["meowrgh"]
+  },
+  "miau": {
+    "category": "master",
+    "sounds": ["miau"]
+  },
+  "wii": {
+    "category": "master",
+    "sounds": ["wii"]
+  },
+  "shoot": {
+    "category": "master",
+    "sounds": ["shoot"]
+  },
+  "quack": {
+    "category": "master",
+    "sounds": ["quack"]
+  },
+  "piano": {
+    "category": "master",
+    "sounds": ["piano"]
+  }
+}

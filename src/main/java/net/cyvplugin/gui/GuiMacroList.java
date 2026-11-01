@@ -8,6 +8,7 @@ import net.cyvplugin.macro.KeybindStore;
 import net.cyvplugin.macro.MacroMirror;
 import net.cyvplugin.macro.MacroStore;
 import net.cyvplugin.macro.SettingsStore;
+import net.cyvplugin.sound.CustomSounds;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiTextField;
 import net.minecraft.client.gui.ScaledResolution;
@@ -37,6 +38,8 @@ public class GuiMacroList extends GuiScreen {
     private static final int BUTTON_RIGHT_INSET = 5;
     private static final String PLAY_LABEL = "Run";
     private static final String MIRROR_LABEL = "Mirror";
+    private static final String OPEN_FOLDER_LABEL = "Open";
+    private static final String ONLY_JUMP_LABEL = "Only Jump";
     private static final String TOGGLE_TOOLTIP = "Display MACRO text";
     private static final int SWITCH_W = 30;
     private static final int SWITCH_H = 12;
@@ -69,7 +72,9 @@ public class GuiMacroList extends GuiScreen {
     private String capturingMacro = null;
     private final SwitchAnim macroSwitch = new SwitchAnim();
     private final SwitchAnim leanSwitch = new SwitchAnim();
+    private final SwitchAnim onlyJumpSwitch = new SwitchAnim();
     private boolean leanSliderDragging = false;
+    private boolean soundDropdownOpen = false;
 
     @Override
     public void initGui() {
@@ -77,6 +82,7 @@ public class GuiMacroList extends GuiScreen {
         favorites = FavoritesStore.load();
         macroSwitch.set(SettingsStore.isMacroHudVisible());
         leanSwitch.set(SettingsStore.isLeanEnabled());
+        onlyJumpSwitch.set(SettingsStore.isNotesOnlyJump());
         searchField = new GuiTextField(0, fontRendererObj, listX1() + 4, searchY() + 3, searchWidth() - 8, SEARCH_HEIGHT - 6);
         searchField.setMaxStringLength(64);
         searchField.setEnableBackgroundDrawing(false);
@@ -217,6 +223,60 @@ public class GuiMacroList extends GuiScreen {
         return leanSwitchY() + SWITCH_H + 4;
     }
 
+    private int soundRowY() {
+        return leanSliderY() + SWITCH_H + 4;
+    }
+
+    private int soundButtonWidth() {
+        return fontRendererObj.getStringWidth(SettingsStore.getNotesSound()) + 10;
+    }
+
+    private int soundButtonX1() {
+        return switchRootX1(ONLY_JUMP_LABEL) - BUTTON_GAP - soundButtonWidth();
+    }
+
+    private int openFolderButtonWidth() {
+        return fontRendererObj.getStringWidth(OPEN_FOLDER_LABEL) + 10;
+    }
+
+    private int openFolderButtonX1() {
+        return soundButtonX1() - BUTTON_GAP - openFolderButtonWidth();
+    }
+
+    private boolean inOpenFolderButton(int mouseX, int mouseY) {
+        int x1 = openFolderButtonX1();
+        return mouseX >= x1 && mouseX <= x1 + openFolderButtonWidth()
+                && mouseY >= soundRowY() && mouseY <= soundRowY() + SWITCH_H;
+    }
+
+    private int soundDropdownY1() {
+        return soundRowY() + SWITCH_H + 2;
+    }
+
+    private int soundDropdownWidth() {
+        int w = soundButtonWidth();
+        for (String sound : SettingsStore.noteSounds()) {
+            w = Math.max(w, fontRendererObj.getStringWidth(sound) + 8);
+        }
+        return w;
+    }
+
+    private boolean inSoundButton(int mouseX, int mouseY) {
+        int x1 = soundButtonX1();
+        return mouseX >= x1 && mouseX <= x1 + soundButtonWidth()
+                && mouseY >= soundRowY() && mouseY <= soundRowY() + SWITCH_H;
+    }
+
+    private int soundDropdownIndexAt(int mouseX, int mouseY) {
+        if (mouseX < soundButtonX1() || mouseX > soundButtonX1() + soundDropdownWidth()) return -1;
+        List<String> sounds = SettingsStore.noteSounds();
+        for (int i = 0; i < sounds.size(); i++) {
+            int y = soundDropdownY1() + i * BUTTON_HEIGHT;
+            if (mouseY >= y && mouseY <= y + BUTTON_HEIGHT) return i;
+        }
+        return -1;
+    }
+
     private int leanSliderX1() {
         return switchTrackX1() + SWITCH_W - SLIDER_TRACK_W;
     }
@@ -341,6 +401,36 @@ public class GuiMacroList extends GuiScreen {
                 SLIDER_KNOB_W / 2f, hovered ? SCROLL_KNOB_HOVER : SCROLL_KNOB);
     }
 
+    private void drawSoundButton(int mouseX, int mouseY) {
+        boolean hovered = inSoundButton(mouseX, mouseY) || soundDropdownOpen;
+        drawRowButton(soundButtonX1(), soundButtonWidth(), soundRowY(),
+                SettingsStore.getNotesSound(), hovered);
+        drawRowButton(openFolderButtonX1(), openFolderButtonWidth(), soundRowY(),
+                OPEN_FOLDER_LABEL, inOpenFolderButton(mouseX, mouseY));
+    }
+
+    private void drawSoundDropdown(int mouseX, int mouseY) {
+        if (!soundDropdownOpen) return;
+        int x1 = soundButtonX1();
+        int w = soundDropdownWidth();
+        int y1 = soundDropdownY1();
+        List<String> sounds = SettingsStore.noteSounds();
+        int count = sounds.size();
+        CyvThemeBridge.drawRoundedRect(x1, y1, x1 + w, y1 + count * BUTTON_HEIGHT, 3, BUTTON_BG);
+        for (int i = 0; i < count; i++) {
+            int y = y1 + i * BUTTON_HEIGHT;
+            boolean hovered = soundDropdownIndexAt(mouseX, mouseY) == i;
+            if (hovered) {
+                CyvThemeBridge.drawRoundedRect(x1 + 1, y, x1 + w - 1, y + BUTTON_HEIGHT, 2, BUTTON_BG_HOVER);
+            }
+            String sound = sounds.get(i);
+            int color = sound.equals(SettingsStore.getNotesSound())
+                    ? CyvThemeBridge.theme("highlight") : 0xFFFFFFFF;
+            CyvThemeBridge.drawString(sound, x1 + 4,
+                    y + (BUTTON_HEIGHT - 8) / 2, color, true);
+        }
+    }
+
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
         drawDefaultBackground();
@@ -395,6 +485,9 @@ public class GuiMacroList extends GuiScreen {
         drawSwitch("MACRO", switchTrackY(), macroSwitch, SettingsStore.isMacroHudVisible(), mouseX, mouseY);
         drawSwitch("LEAN", leanSwitchY(), leanSwitch, SettingsStore.isLeanEnabled(), mouseX, mouseY);
         drawLeanSlider(mouseX, mouseY);
+        drawSoundButton(mouseX, mouseY);
+        drawSwitch(ONLY_JUMP_LABEL, soundRowY(), onlyJumpSwitch, SettingsStore.isNotesOnlyJump(), mouseX, mouseY);
+        drawSoundDropdown(mouseX, mouseY);
         drawTooltip(TOGGLE_TOOLTIP, switchTrackY(), mouseX, mouseY);
     }
 
@@ -452,6 +545,10 @@ public class GuiMacroList extends GuiScreen {
 
     @Override
     protected void keyTyped(char typedChar, int keyCode) throws IOException {
+        if (soundDropdownOpen) {
+            soundDropdownOpen = false;
+            return;
+        }
         if (capturingMacro != null) {
             if (keyCode == Keyboard.KEY_ESCAPE || keyCode == Keyboard.KEY_DELETE || keyCode == Keyboard.KEY_SPACE) {
                 KeybindStore.remove(capturingMacro);
@@ -476,6 +573,26 @@ public class GuiMacroList extends GuiScreen {
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) throws IOException {
         super.mouseClicked(mouseX, mouseY, mouseButton);
 
+        if (soundDropdownOpen) {
+            if (mouseButton == 0) {
+                int index = soundDropdownIndexAt(mouseX, mouseY);
+                List<String> sounds = SettingsStore.noteSounds();
+                if (index >= 0 && index < sounds.size()) SettingsStore.setNotesSound(sounds.get(index));
+            }
+            soundDropdownOpen = false;
+            return;
+        }
+
+        if (mouseButton == 0 && inSoundButton(mouseX, mouseY)) {
+            soundDropdownOpen = true;
+            return;
+        }
+
+        if (mouseButton == 0 && inOpenFolderButton(mouseX, mouseY)) {
+            CustomSounds.openFolder();
+            return;
+        }
+
         if (mouseButton == 0 && inSwitch("MACRO", switchTrackY(), mouseX, mouseY)) {
             SettingsStore.setMacroHudVisible(!SettingsStore.isMacroHudVisible());
             macroSwitch.trigger(SettingsStore.isMacroHudVisible());
@@ -485,6 +602,12 @@ public class GuiMacroList extends GuiScreen {
         if (mouseButton == 0 && inSwitch("LEAN", leanSwitchY(), mouseX, mouseY)) {
             SettingsStore.setLeanEnabled(!SettingsStore.isLeanEnabled());
             leanSwitch.trigger(SettingsStore.isLeanEnabled());
+            return;
+        }
+
+        if (mouseButton == 0 && inSwitch(ONLY_JUMP_LABEL, soundRowY(), mouseX, mouseY)) {
+            SettingsStore.setNotesOnlyJump(!SettingsStore.isNotesOnlyJump());
+            onlyJumpSwitch.trigger(SettingsStore.isNotesOnlyJump());
             return;
         }
 

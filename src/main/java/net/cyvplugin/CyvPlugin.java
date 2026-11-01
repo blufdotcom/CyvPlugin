@@ -3,6 +3,7 @@ package net.cyvplugin;
 import net.cyvplugin.bridge.CyvThemeBridge;
 import net.cyvplugin.command.CommandCyvPlugin;
 import net.cyvplugin.event.CameraLeanHandler;
+import net.cyvplugin.event.MovementNoteHandler;
 import net.cyvplugin.event.MacroGuiKeyHandler;
 import net.cyvplugin.event.MacroHudHandler;
 import net.cyvplugin.event.MacroInputPriorityHandler;
@@ -16,6 +17,7 @@ import net.cyvplugin.update.Updater;
 import net.cyvplugin.practice.PracticeHandler;
 import net.cyvplugin.practice.RecordListener;
 import net.cyvplugin.practice.S08Watcher;
+import net.cyvplugin.sound.CustomSounds;
 import net.cyvplugin.teleport.CheckpointHandler;
 import net.cyvplugin.teleport.TPHandler;
 import net.minecraft.client.Minecraft;
@@ -31,7 +33,7 @@ import org.apache.logging.log4j.LogManager;
 @Mod(modid = CyvPlugin.MODID, version = CyvPlugin.VERSION, dependencies = "required-after:cyvforge")
 public class CyvPlugin {
     public static final String MODID = "cyvplugin";
-    public static final String VERSION = "0.0.11";
+    public static final String VERSION = "0.0.12";
 
     @Mod.Instance(CyvPlugin.MODID)
     public static CyvPlugin instance;
@@ -54,6 +56,8 @@ public class CyvPlugin {
         }
         MinecraftForge.EVENT_BUS.register(new MacroInputPriorityHandler());
         MinecraftForge.EVENT_BUS.register(new CameraLeanHandler());
+        MinecraftForge.EVENT_BUS.register(new MovementNoteHandler());
+        MinecraftForge.EVENT_BUS.register(new CustomSounds());
         MinecraftForge.EVENT_BUS.register(new S08Watcher());
         MinecraftForge.EVENT_BUS.register(new PracticeHandler());
         MinecraftForge.EVENT_BUS.register(new RecordListener());

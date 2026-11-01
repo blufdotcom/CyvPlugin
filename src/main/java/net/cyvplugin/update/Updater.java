@@ -263,24 +263,57 @@ public final class Updater {
         // and delete the old one once the game has closed.
         File fresh = new File(target.getParentFile(), "cyvplugin-" + version + ".jar");
         Files.move(source.toPath(), fresh.toPath(), StandardCopyOption.REPLACE_EXISTING);
-        deleteAfterExit(target);
+        deleteAfterExit(target, fresh);
     }
 
     private static boolean isWindows() {
         return System.getProperty("os.name", "").toLowerCase().contains("win");
     }
 
-    private static void deleteAfterExit(final File old) {
+    // A single delayed delete races the rest of JVM shutdown (the jar is still locked),
+    // so a helper script retries for ~60s after the game closes and sweeps stray jars.
+    private static void deleteAfterExit(final File old, final File keep) {
         Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    new ProcessBuilder("cmd", "/c", "ping", "-n", "4", "127.0.0.1", ">nul",
-                            "&", "del", "/f", "/q", old.getAbsolutePath()).start();
+                    spawnCleanup(old, keep);
                 } catch (Exception ignored) {
+                    old.delete();
                 }
             }
         }, "CyvPlugin-Cleanup"));
+    }
+
+    private static void spawnCleanup(File old, File keep) throws Exception {
+        File script = File.createTempFile("cyvplugin-", ".bat");
+        StringBuilder body = new StringBuilder();
+        body.append("@echo off\r\n");
+        body.append("setlocal\r\n");
+        body.append("set \"keep=").append(keep.getAbsolutePath()).append("\"\r\n");
+        body.append("set \"old=").append(old.getAbsolutePath()).append("\"\r\n");
+        body.append("set \"mods=").append(old.getParentFile().getAbsolutePath()).append("\"\r\n");
+        body.append("set tries=0\r\n");
+        body.append(":loop\r\n");
+        body.append("ping -n 2 127.0.0.1 >nul\r\n");
+        body.append("if exist \"%old%\" del /f /q \"%old%\" >nul 2>&1\r\n");
+        body.append("set \"stale=\"\r\n");
+        body.append("for %%f in (\"%mods%\\cyvplugin*.jar\") do (\r\n");
+        body.append("  if /i not \"%%~ff\"==\"%keep%\" (\r\n");
+        body.append("    del /f /q \"%%~f\" >nul 2>&1\r\n");
+        body.append("    if exist \"%%~f\" set \"stale=1\"\r\n");
+        body.append("  )\r\n");
+        body.append(")\r\n");
+        body.append("if exist \"%old%\" goto retry\r\n");
+        body.append("if defined stale goto retry\r\n");
+        body.append("del /f /q \"%~f0\" >nul 2>&1\r\n");
+        body.append("exit /b 0\r\n");
+        body.append(":retry\r\n");
+        body.append("set /a tries=%tries%+1 >nul\r\n");
+        body.append("if %tries% LSS 60 goto loop\r\n");
+        body.append("del /f /q \"%~f0\" >nul 2>&1\r\n");
+        Files.write(script.toPath(), body.toString().getBytes());
+        new ProcessBuilder("cmd", "/c", "call", "\"" + script.getAbsolutePath() + "\"").start();
     }
 
     private static HttpURLConnection open(String url) throws Exception {

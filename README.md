@@ -6,7 +6,7 @@ Addon for [CyvForge](https://github.com/Morpheye/CyvForge) (Minecraft 1.8.9 Forg
 
 - **Practice mode:** client-side ghost player with real physics; your real body stays frozen. Hotbar: redstone (record), feather (fly), command block (save macro).
 - **Macros:** record movement and save it as a CyvForge macro (`config/cyvforge/macros/<name>.json`). Run, stop and list macros. GUI with search, favorites and **Mirror**.
-- **Auto-update:** downloads the latest GitHub release and verifies its SHA-256.
+- **Auto-update:** downloads the latest GitHub release, verifies its SHA-256 and swaps the jar in `mods/` (on Windows the old jar is removed automatically once the game closes).
 
 ## Commands
 
@@ -28,7 +28,7 @@ Category **CyvPlugin Keys**, unbound by default: Macro List, Macro GUI, Practice
 
 ## Install
 
-Put `cyvplugin-<version>.jar` from [Releases](https://github.com/blufdotcom/CyvPlugin/releases) in `mods/` next to CyvForge.
+Download `CyvPlugin.jar` from [Releases](https://github.com/blufdotcom/CyvPlugin/releases) and put it in `mods/` next to CyvForge — every update is just the same file again, so the previous copy is replaced instead of left behind. If you installed an older `cyvplugin-<version>.jar`, delete that file once.
 
 ## Build
 
