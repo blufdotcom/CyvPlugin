@@ -37,6 +37,7 @@ Under **Controls > CyvPlugin Keys**:
 - Teleport to Checkpoint
 - Teleport Through Block
 - Teleport to Top of Block.
+
 _all unbound by defaul_
 
 ## Install
