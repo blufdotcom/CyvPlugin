@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.cyvplugin.CyvPlugin;
 import net.minecraftforge.fml.common.Loader;
-import org.apache.logging.log4j.LogManager;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
@@ -71,7 +70,7 @@ public final class Updater {
             String tag = release.get("tag_name").getAsString();
             String latestVersion = stripV(tag);
             if (!Version.isNewer(latestVersion, CyvPlugin.VERSION)) {
-                LogManager.getLogger().info("CyvPlugin up to date (" + CyvPlugin.VERSION + ")");
+                CyvPlugin.LOGGER.info("CyvPlugin up to date (" + CyvPlugin.VERSION + ")");
                 UpdateState.status = UpdateState.STATUS_UP_TO_DATE;
                 return;
             }
@@ -101,7 +100,7 @@ public final class Updater {
 
             File current = currentJar();
             if (current == null) {
-                LogManager.getLogger().info("CyvPlugin updater skipped (not running from a jar)");
+                CyvPlugin.LOGGER.info("CyvPlugin updater skipped (not running from a jar)");
                 fail("Could not locate the mod jar");
                 return;
             }
@@ -119,13 +118,13 @@ public final class Updater {
             if (actual == null) {
                 temp.delete();
                 fail("Download failed");
-                LogManager.getLogger().warn("CyvPlugin update aborted: could not download " + jarUrl);
+                CyvPlugin.LOGGER.warn("CyvPlugin update aborted: could not download " + jarUrl);
                 return;
             }
             if (!actual.equals(expected)) {
                 temp.delete();
                 fail("SHA-256 mismatch");
-                LogManager.getLogger().warn("CyvPlugin update aborted: sha256 mismatch (expected "
+                CyvPlugin.LOGGER.warn("CyvPlugin update aborted: sha256 mismatch (expected "
                         + expected + ", got " + actual + ")");
                 return;
             }
@@ -141,10 +140,10 @@ public final class Updater {
             UpdateState.updateReady = true;
             UpdateState.status = UpdateState.STATUS_RESTART;
             UpdateState.error = null;
-            LogManager.getLogger().info("CyvPlugin updated to " + latestVersion + "; restart to apply");
+            CyvPlugin.LOGGER.info("CyvPlugin updated to " + latestVersion + "; restart to apply");
         } catch (Exception e) {
             fail(e.getMessage());
-            LogManager.getLogger().warn("CyvPlugin update check failed", e);
+            CyvPlugin.LOGGER.warn("CyvPlugin update check failed", e);
         }
     }
 

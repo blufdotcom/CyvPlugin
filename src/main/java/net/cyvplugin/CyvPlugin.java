@@ -2,6 +2,8 @@ package net.cyvplugin;
 
 import net.cyvplugin.bridge.CyvThemeBridge;
 import net.cyvplugin.command.CommandCyvPlugin;
+import net.cyvplugin.command.TPCommand;
+import net.cyvplugin.command.TPFCommand;
 import net.cyvplugin.event.CameraLeanHandler;
 import net.cyvplugin.event.MovementNoteHandler;
 import net.cyvplugin.event.MacroGuiKeyHandler;
@@ -26,58 +28,72 @@ import net.minecraftforge.client.ClientCommandHandler;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 @Mod(modid = CyvPlugin.MODID, version = CyvPlugin.VERSION, dependencies = "required-after:cyvforge")
 public class CyvPlugin {
     public static final String MODID = "cyvplugin";
-    public static final String VERSION = "0.0.12";
+    public static final String VERSION = "0.0.13";
+    public static final Logger LOGGER = LogManager.getLogger(MODID);
 
     @Mod.Instance(CyvPlugin.MODID)
     public static CyvPlugin instance;
 
     @Mod.EventHandler
-    public void preInit(FMLPreInitializationEvent preEvent) {
+    public void init(FMLInitializationEvent event) {
+        registerEventHandlers();
+        registerKeybindings();
+        registerCommands();
+        Updater.start();
+        LOGGER.info("CyvPlugin mod initialized!");
     }
 
-    @Mod.EventHandler
-    public void init(FMLInitializationEvent event) {
-        MinecraftForge.EVENT_BUS.register(new UpdateNotificationHandler());
-        MinecraftForge.EVENT_BUS.register(new MacroMenuKeyHandler());
-        MinecraftForge.EVENT_BUS.register(new MacroKeybindHandler());
-        MinecraftForge.EVENT_BUS.register(new MacroGuiKeyHandler());
-        MinecraftForge.EVENT_BUS.register(new MpkGuiButtonHandler());
+    private void registerEventHandlers() {
+        Object[] handlersBeforeHud = {
+                new UpdateNotificationHandler(),
+                new MacroMenuKeyHandler(),
+                new MacroKeybindHandler(),
+                new MacroGuiKeyHandler(),
+                new MpkGuiButtonHandler(),
+        };
+        Object[] handlersAfterHud = {
+                new MacroInputPriorityHandler(),
+                new CameraLeanHandler(),
+                new MovementNoteHandler(),
+                new CustomSounds(),
+                new S08Watcher(),
+                new PracticeHandler(),
+                new RecordListener(),
+                new PracticeKeyHandler(),
+                new TPHandler(),
+                new CheckpointHandler(),
+                new TeleportKeyHandler(),
+        };
+        for (Object handler : handlersBeforeHud) {
+            MinecraftForge.EVENT_BUS.register(handler);
+        }
         if (MacroHudHandler.install()) {
             MinecraftForge.EVENT_BUS.register(new MacroHudHandler());
         } else {
-            LogManager.getLogger().warn("CyvPlugin: could not hook HUDManager, MACRO HUD toggle disabled");
+            LOGGER.warn("CyvPlugin: could not hook HUDManager, MACRO HUD toggle disabled");
         }
-        MinecraftForge.EVENT_BUS.register(new MacroInputPriorityHandler());
-        MinecraftForge.EVENT_BUS.register(new CameraLeanHandler());
-        MinecraftForge.EVENT_BUS.register(new MovementNoteHandler());
-        MinecraftForge.EVENT_BUS.register(new CustomSounds());
-        MinecraftForge.EVENT_BUS.register(new S08Watcher());
-        MinecraftForge.EVENT_BUS.register(new PracticeHandler());
-        MinecraftForge.EVENT_BUS.register(new RecordListener());
-        MinecraftForge.EVENT_BUS.register(new PracticeKeyHandler());
-        MinecraftForge.EVENT_BUS.register(new TPHandler());
-        MinecraftForge.EVENT_BUS.register(new CheckpointHandler());
-        MinecraftForge.EVENT_BUS.register(new TeleportKeyHandler());
+        for (Object handler : handlersAfterHud) {
+            MinecraftForge.EVENT_BUS.register(handler);
+        }
+    }
+
+    private void registerKeybindings() {
         MacroMenuKeyHandler.registerKeybinding();
         MacroGuiKeyHandler.registerKeybinding();
         PracticeKeyHandler.registerKeybinding();
         TeleportKeyHandler.registerKeybindings();
-        ClientCommandHandler.instance.registerCommand(new CommandCyvPlugin());
-        ClientCommandHandler.instance.registerCommand(new net.cyvplugin.command.TPCommand());
-        ClientCommandHandler.instance.registerCommand(new net.cyvplugin.command.TPFCommand());
-        Updater.start();
-        LogManager.getLogger().info("CyvPlugin mod initialized!");
     }
 
-    @Mod.EventHandler
-    public void postInit(FMLPostInitializationEvent postEvent) {
+    private void registerCommands() {
+        ClientCommandHandler.instance.registerCommand(new CommandCyvPlugin());
+        ClientCommandHandler.instance.registerCommand(new TPCommand());
+        ClientCommandHandler.instance.registerCommand(new TPFCommand());
     }
 
     public static void sendChatMessage(String text) {

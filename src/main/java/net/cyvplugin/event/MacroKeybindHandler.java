@@ -2,11 +2,10 @@ package net.cyvplugin.event;
 
 import net.cyvplugin.CyvPlugin;
 import net.cyvplugin.bridge.CyvForgeBridge;
-import net.cyvplugin.macro.KeybindStore;
+import net.cyvplugin.macro.DataStore;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent;
-import org.apache.logging.log4j.LogManager;
 import org.lwjgl.input.Keyboard;
 
 import java.util.Map;
@@ -19,14 +18,14 @@ public class MacroKeybindHandler {
         if (key <= 0) return;
         Minecraft mc = Minecraft.getMinecraft();
         if (mc.theWorld == null || mc.currentScreen != null) return;
-        for (Map.Entry<String, Integer> entry : KeybindStore.all().entrySet()) {
+        for (Map.Entry<String, Integer> entry : DataStore.getKeybinds().entrySet()) {
             Integer bound = entry.getValue();
             if (bound == null || bound != key) continue;
             if (cancelMacroIfRunning()) return;
             try {
                 CyvForgeBridge.runMacro(entry.getKey());
             } catch (Exception e) {
-                LogManager.getLogger().error("CyvPlugin: failed to run macro '" + entry.getKey() + "'", e);
+                CyvPlugin.LOGGER.error("CyvPlugin: failed to run macro '" + entry.getKey() + "'", e);
                 CyvPlugin.sendChatMessage("Could not run macro '" + entry.getKey() + "': " + e.getMessage());
             }
             return;
@@ -47,7 +46,7 @@ public class MacroKeybindHandler {
         try {
             CyvForgeBridge.runCurrentMacro();
         } catch (Exception e) {
-            LogManager.getLogger().error("CyvPlugin: failed to run macro via CyvForge key", e);
+            CyvPlugin.LOGGER.error("CyvPlugin: failed to run macro via CyvForge key", e);
             CyvPlugin.sendChatMessage("Could not run macro: " + e.getMessage());
         }
     }
@@ -59,7 +58,7 @@ public class MacroKeybindHandler {
                 return true;
             }
         } catch (Exception e) {
-            LogManager.getLogger().error("CyvPlugin: failed to stop macro", e);
+            CyvPlugin.LOGGER.error("CyvPlugin: failed to stop macro", e);
         }
         return false;
     }

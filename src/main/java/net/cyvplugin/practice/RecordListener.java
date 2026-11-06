@@ -57,9 +57,10 @@ public class RecordListener {
         recordedTicks.clear();
     }
 
-    /**Two ticks of dead input after a server teleport: the movement keys are released and
-     * the camera is pinned to the post-teleport angle, so neither held keys nor the mouse
-     * (nor the rotation the server wrote) can leak into the recording.*/
+    /**Two ticks of dead input after a server teleport: the movement keys (sprint left alone,
+     * releasing it desyncs CyvForge's toggle sprint) are released and the camera is pinned to
+     * the post-teleport angle, so neither held keys nor the mouse (nor the rotation the server
+     * wrote) can leak into the recording.*/
     public static void startInputLock() {
         if (!recording) return;
         inputLockTicks = INPUT_LOCK_TICKS;

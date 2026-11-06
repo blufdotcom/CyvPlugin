@@ -3,8 +3,7 @@ package net.cyvplugin.gui;
 import net.cyvplugin.CyvPlugin;
 import net.cyvplugin.bridge.CyvForgeBridge;
 import net.cyvplugin.bridge.CyvThemeBridge;
-import net.cyvplugin.macro.FavoritesStore;
-import net.cyvplugin.macro.KeybindStore;
+import net.cyvplugin.macro.DataStore;
 import net.cyvplugin.macro.MacroMirror;
 import net.cyvplugin.macro.MacroStore;
 import net.cyvplugin.macro.SettingsStore;
@@ -79,7 +78,7 @@ public class GuiMacroList extends GuiScreen {
     @Override
     public void initGui() {
         allMacros = MacroStore.listNames();
-        favorites = FavoritesStore.load();
+        favorites = DataStore.getFavorites();
         macroSwitch.set(SettingsStore.isMacroHudVisible());
         leanSwitch.set(SettingsStore.isLeanEnabled());
         onlyJumpSwitch.set(SettingsStore.isNotesOnlyJump());
@@ -174,7 +173,7 @@ public class GuiMacroList extends GuiScreen {
 
     private String keyLabel(String name) {
         if (name.equals(capturingMacro)) return "...";
-        int code = KeybindStore.get(name);
+        int code = DataStore.getKeybind(name);
         return code < 0 ? "+" : Keyboard.getKeyName(code);
     }
 
@@ -452,7 +451,7 @@ public class GuiMacroList extends GuiScreen {
                 if (rowY + ROW_CARD_HEIGHT < listY1() || rowY > listY2()) continue;
                 boolean favorite = favorites.contains(name);
                 boolean hovered = i == hoveredIndex;
-                boolean hasBind = KeybindStore.get(name) >= 0;
+                boolean hasBind = DataStore.getKeybind(name) >= 0;
                 CyvThemeBridge.drawRoundedRect(listX1(), rowY, listX2(), rowY + ROW_CARD_HEIGHT, 3, rowColor(favorite, hovered));
 
                 int textRight;
@@ -551,9 +550,9 @@ public class GuiMacroList extends GuiScreen {
         }
         if (capturingMacro != null) {
             if (keyCode == Keyboard.KEY_ESCAPE || keyCode == Keyboard.KEY_DELETE || keyCode == Keyboard.KEY_SPACE) {
-                KeybindStore.remove(capturingMacro);
+                DataStore.removeKeybind(capturingMacro);
             } else {
-                KeybindStore.set(capturingMacro, keyCode);
+                DataStore.setKeybind(capturingMacro, keyCode);
             }
             capturingMacro = null;
             return;
@@ -645,7 +644,7 @@ public class GuiMacroList extends GuiScreen {
                     capturingMacro = name.equals(capturingMacro) ? null : name;
                     searchField.setFocused(false);
                 } else if (mouseButton == 1) {
-                    KeybindStore.remove(name);
+                    DataStore.removeKeybind(name);
                     if (name.equals(capturingMacro)) capturingMacro = null;
                 }
                 return;
@@ -687,7 +686,7 @@ public class GuiMacroList extends GuiScreen {
 
     private void toggleFavorite(String name) {
         if (!favorites.remove(name)) favorites.add(name);
-        FavoritesStore.save(favorites);
+        DataStore.setFavorites(favorites);
         refreshFiltered();
     }
 

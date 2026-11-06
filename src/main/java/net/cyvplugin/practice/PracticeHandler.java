@@ -149,7 +149,6 @@ public class PracticeHandler {
         KeyBinding.setKeyBindState(settings.keyBindLeft.getKeyCode(), false);
         KeyBinding.setKeyBindState(settings.keyBindRight.getKeyCode(), false);
         KeyBinding.setKeyBindState(settings.keyBindJump.getKeyCode(), false);
-        KeyBinding.setKeyBindState(settings.keyBindSprint.getKeyCode(), false);
         KeyBinding.setKeyBindState(settings.keyBindSneak.getKeyCode(), false);
     }
 

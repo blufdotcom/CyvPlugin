@@ -1,9 +1,9 @@
 package net.cyvplugin.event;
 
+import net.cyvplugin.CyvPlugin;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import org.apache.logging.log4j.LogManager;
 
 import java.lang.reflect.Field;
 
@@ -21,7 +21,7 @@ public class MpkGuiButtonHandler {
             if (button == null) return;
             button.getClass().getMethod("setEnabled", boolean.class).invoke(button, true);
         } catch (Exception e) {
-            LogManager.getLogger().error("CyvPlugin: failed to enable GuiMPK macro button", e);
+            CyvPlugin.LOGGER.error("CyvPlugin: failed to enable GuiMPK macro button", e);
         }
     }
 }
